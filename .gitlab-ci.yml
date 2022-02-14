@@ -1,0 +1,343 @@
+---
+variables:
+  ENVIRONMENT: ${CI_COMMIT_BRANCH}
+  GOOGLE_CREDENTIALS: ${GOOGLE_CREDENTIALS}
+  FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
+  REGISTRY_CREDENTIALS: ${REGISTRY_CREDENTIALS}
+  GCP_PROJECT: ${GCP_PROJECT}
+  GCP_PROJECT_REGION: ${GCP_PROJECT_REGION}
+  # terraform variables section
+  TF_ROOT: ${CI_PROJECT_DIR}/terraform
+  TF_ADDRESS: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${ENVIRONMENT}
+  TF_STATE_NAME: ${ENVIRONMENT}
+  TF_CACHE_KEY: ${ENVIRONMENT}
+  TF_VAR_gcp_project: ${GCP_PROJECT}
+
+
+stages:
+  - check
+  - build deployer
+  - prepare
+  - validate
+  - plan
+  - apply
+  - deploy
+  - db
+  - destroy staging
+
+
+lint yaml files:
+  stage: check
+  image: python:3.9.10-slim-bullseye
+  allow_failure: true
+  variables:
+    PIP_CACHE_DIR: ${CI_PROJECT_DIR}/.cache/pip
+  cache:
+    key: yaml linter
+    paths:
+      - .cache/pip
+      - venv/
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install yamllint
+  script:
+    - yamllint .gitlab-ci.yml nhl-app
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  tags:
+    - docker
+
+
+lint helm chart:
+  stage: check
+  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  allow_failure: true
+  script:
+    - helm lint nhl-app
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  tags:
+    - docker
+
+
+checkov terraform:
+  stage: check
+  image:
+    name: bridgecrew/checkov:latest
+    entrypoint:
+      - '/usr/bin/env'
+      - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+  allow_failure: true
+  script:
+    - checkov -d terraform -o cli
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  tags:
+    - docker
+
+
+checkov chart:
+  stage: check
+  image:
+    name: bridgecrew/checkov:latest
+    entrypoint:
+      - '/usr/bin/env'
+      - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+  allow_failure: true
+  script:
+    - checkov -d nhl-app -o cli
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  tags:
+    - docker
+
+
+gitleaks secrets scanning:
+  stage: check
+  image:
+    name: zricethezav/gitleaks
+    entrypoint:
+      - ""
+  allow_failure: false
+  script:
+    - gitleaks detect -v
+  tags:
+    - docker
+
+
+init:
+  stage: prepare
+  image:
+    name: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  allow_failure: false
+  environment:
+    name: ${ENVIRONMENT}
+  cache:
+    key: ${TF_CACHE_KEY}
+    paths:
+      - ${TF_ROOT}/.terraform/
+  script:
+    - cd ${TF_ROOT}/${ENVIRONMENT}
+    - gitlab-terraform version
+    - gitlab-terraform init
+  resource_group: ${TF_STATE_NAME}
+  tags:
+    - docker
+
+
+fmt:
+  stage: validate
+  image:
+    name: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  allow_failure: true
+  environment:
+    name: ${ENVIRONMENT}
+  cache:
+    key: ${TF_CACHE_KEY}
+    paths:
+      - ${TF_ROOT}/.terraform/
+  script:
+    - cd ${TF_ROOT}/${ENVIRONMENT}
+    - gitlab-terraform fmt
+  resource_group: ${TF_STATE_NAME}
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  tags:
+    - docker
+
+
+validate:
+  stage: validate
+  image:
+    name: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  allow_failure: false
+  environment:
+    name: ${ENVIRONMENT}
+  cache:
+    key: ${TF_CACHE_KEY}
+    paths:
+      - ${TF_ROOT}/.terraform/
+  script:
+    - cd ${TF_ROOT}/${ENVIRONMENT}
+    - gitlab-terraform validate
+  resource_group: ${TF_STATE_NAME}
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  tags:
+    - docker
+
+
+plan:
+  stage: plan
+  image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  allow_failure: false
+  environment:
+    name: ${ENVIRONMENT}
+  cache:
+    key: ${TF_CACHE_KEY}
+    paths:
+      - ${TF_ROOT}/.terraform/
+  script:
+    - cd ${TF_ROOT}/${ENVIRONMENT}
+    - gitlab-terraform plan
+    - gitlab-terraform plan-json
+  resource_group: ${TF_STATE_NAME}
+  artifacts:
+    name: plan
+    paths:
+      - ${TF_ROOT}/${ENVIRONMENT}/plan.cache
+    reports:
+      terraform: ${TF_ROOT}/${ENVIRONMENT}/plan.json
+  only:
+    - staging
+    - production
+  tags:
+    - docker
+
+
+apply:
+  stage: apply
+  image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  allow_failure: false
+  environment:
+    name: ${ENVIRONMENT}
+  cache:
+    key: ${TF_CACHE_KEY}
+    paths:
+      - ${TF_ROOT}/.terraform/
+  script:
+    - cd ${TF_ROOT}/${ENVIRONMENT}
+    - gitlab-terraform apply
+  resource_group: ${TF_STATE_NAME}
+  dependencies:
+    - plan
+  only:
+    - staging
+    - production
+  when: manual
+  tags:
+    - docker
+
+
+provide secrets:
+  stage: deploy
+  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  environment:
+    name: staging
+  allow_failure: true
+  before_script:
+    - echo ${GOOGLE_CREDENTIALS} > credentials.json
+    - gcloud auth activate-service-account --key-file=credentials.json
+    - gcloud config set project ${GCP_PROJECT}
+    - gcloud config set compute/region ${GCP_PROJECT_REGION}
+    - gcloud container clusters get-credentials ${ENVIRONMENT}-cluster
+  script:
+    - echo ${REGISTRY_CREDENTIALS} > .dockerconfigjson
+    - >-
+      kubectl create secret generic nhl-app-registry
+      --from-file=.dockerconfigjson
+      --type=kubernetes.io/dockerconfigjson
+      -n=${ENVIRONMENT}
+      --dry-run=client -o yaml |
+      kubectl apply -f -
+    - echo ${FIRESTORE_CREDENTIALS} > firestore-credentials.json
+    - >- 
+      kubectl create secret generic firestore-credentials
+      --from-file=firestore-credentials.json
+      -n=${ENVIRONMENT}
+      --dry-run=client -o yaml |
+      kubectl apply -f -
+  only:
+    - staging
+    - production
+  when: manual
+  tags:
+    - docker
+
+
+deploy app:
+  stage: deploy
+  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  environment:
+    name: staging
+  allow_failure: true
+  before_script:
+    - echo ${GOOGLE_CREDENTIALS} > credentials.json
+    - gcloud auth activate-service-account --key-file=credentials.json
+    - gcloud config set project ${GCP_PROJECT}
+    - gcloud config set compute/region ${GCP_PROJECT_REGION}
+    - gcloud container clusters get-credentials ${ENVIRONMENT}-cluster
+  script:
+    - kubectl create namespace ${ENVIRONMENT} --dry-run=client -o yaml | kubectl apply -f -
+    - >-
+      helm upgrade nhl-app-${ENVIRONMENT} nhl-app -i
+      -n ${ENVIRONMENT}
+      --set environment=${ENVIRONMENT}
+  only:
+    - staging
+    - production
+  tags:
+    - docker
+
+
+populate db:
+  stage: db
+  image: registry.koi-projects.ru/epam-diploma/app:latest
+  allow_failure: true
+  variables:
+    FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
+  script:
+    - echo ${FIRESTORE_CREDENTIALS} > firestore-credentials.json
+    - python createdb.py
+  only:
+    - staging
+    - production
+  when: manual
+  tags:
+    - docker
+
+
+destroy staging namespace:
+  stage: destroy staging
+  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  allow_failure: true
+  environment:
+    name: staging
+  before_script:
+    - echo ${GOOGLE_CREDENTIALS} > credentials.json
+    - gcloud auth activate-service-account --key-file=credentials.json
+    - gcloud config set project staging-338816
+    - gcloud config set compute/region europe-north1
+    - gcloud container clusters get-credentials staging-cluster
+  script:
+    - kubectl delete namespace staging
+  only:
+    - staging
+  when: manual
+  tags:
+    - docker
+
+
+destroy staging cluster:
+  stage: destroy staging
+  image:
+    name: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  allow_failure: true
+  environment:
+    name: staging
+  cache:
+    key: ${TF_CACHE_KEY}
+    paths:
+      - ${TF_ROOT}/.terraform/
+  script:
+    - cd ${TF_ROOT}/${ENVIRONMENT}
+    - gitlab-terraform destroy
+  resource_group: staging
+  only:
+    - staging
+  when: manual
+  tags:
+    - docker

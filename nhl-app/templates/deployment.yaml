@@ -1,0 +1,90 @@
+---
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: {{.Release.Name}}-deployment
+  namespace: {{.Values.environment}}
+  labels:
+    app: {{.Release.Name}}-deployment
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
+    checkov.io/skip1: CKV_K8S_43=App images use unique tags
+
+spec:
+  replicas: {{.Values.minReplicaCount}}
+  selector:
+    matchLabels:
+      app: {{.Release.Name}}-pod
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+
+  template:
+    metadata:
+      labels:
+        app: {{.Release.Name}}-pod
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
+
+    spec:
+      containers:
+        - name: {{.Release.Name}}-pod
+          image: {{.Values.imageRepository}}/{{.Values.imageName}}:{{.Chart.AppVersion}}
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: {{.Values.appPort}}
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 400m
+              memory: 384Mi
+
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10201
+            runAsGroup: 20201
+            capabilities:
+              drop:
+                - NET_RAW
+                - ALL
+
+          startupProbe:
+            httpGet:
+              port: {{.Values.appPort}}
+              path: /
+            failureThreshold: 5
+            periodSeconds: 15
+
+          livenessProbe:
+            httpGet:
+              port: {{.Values.appPort}}
+              path: /
+
+          readinessProbe:
+            httpGet:
+              port: {{.Values.appPort}}
+              path: /
+
+          volumeMounts:
+            - name: firestore-credentials-volume
+              mountPath: "/usr/src/app/secret"
+              readOnly: true
+
+      volumes:
+        - name: firestore-credentials-volume
+          secret:
+            secretName: firestore-credentials
+      imagePullSecrets:
+        - name: nhl-app-registry
+      automountServiceAccountToken: false
