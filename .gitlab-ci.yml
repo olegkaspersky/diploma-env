@@ -4,8 +4,6 @@ variables:
   GOOGLE_CREDENTIALS: ${GOOGLE_CREDENTIALS}
   FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
   REGISTRY_CREDENTIALS: ${REGISTRY_CREDENTIALS}
-  GCP_PROJECT: ${GCP_PROJECT}
-  GCP_PROJECT_REGION: ${GCP_PROJECT_REGION}
   # terraform variables section
   TF_ROOT: ${CI_PROJECT_DIR}/terraform
   TF_ADDRESS: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${ENVIRONMENT}
@@ -15,7 +13,6 @@ variables:
 
 stages:
   - check
-  - build deployer
   - prepare
   - validate
   - plan
@@ -45,19 +42,19 @@ lint yaml files:
   script:
     - yamllint .gitlab-ci.yml nhl-app
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
 
 lint helm chart:
   stage: check
-  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   allow_failure: true
   script:
     - helm lint nhl-app
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -73,7 +70,7 @@ checkov terraform:
   script:
     - checkov -d terraform -o cli
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -89,7 +86,7 @@ checkov chart:
   script:
     - checkov -d nhl-app -o cli
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -144,7 +141,7 @@ fmt:
     - gitlab-terraform fmt
   resource_group: ${TF_STATE_NAME}
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -161,11 +158,12 @@ validate:
     paths:
       - ${TF_ROOT}/.terraform/
   script:
+    - export TF_VAR_gcp_project=${GCP_PROJECT}
     - cd ${TF_ROOT}/${ENVIRONMENT}
     - gitlab-terraform validate
   resource_group: ${TF_STATE_NAME}
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -193,8 +191,7 @@ plan:
     reports:
       terraform: ${TF_ROOT}/${ENVIRONMENT}/plan.json
   only:
-    - staging
-    - production
+    - main
   tags:
     - docker
 
@@ -216,8 +213,7 @@ apply:
   dependencies:
     - plan
   only:
-    - staging
-    - production
+    - main
   when: manual
   tags:
     - docker
@@ -225,7 +221,7 @@ apply:
 
 provide secrets:
   stage: deploy
-  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   environment:
     name: staging
   allow_failure: true
@@ -252,8 +248,7 @@ provide secrets:
       --dry-run=client -o yaml |
       kubectl apply -f -
   only:
-    - staging
-    - production
+    - main
   when: manual
   tags:
     - docker
@@ -261,7 +256,7 @@ provide secrets:
 
 deploy app:
   stage: deploy
-  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   environment:
     name: staging
   allow_failure: true
@@ -278,8 +273,7 @@ deploy app:
       -n ${ENVIRONMENT}
       --set environment=${ENVIRONMENT}
   only:
-    - staging
-    - production
+    - main
   tags:
     - docker
 
@@ -294,8 +288,7 @@ populate db:
     - echo ${FIRESTORE_CREDENTIALS} > firestore-credentials.json
     - python createdb.py
   only:
-    - staging
-    - production
+    - main
   when: manual
   tags:
     - docker
@@ -303,7 +296,7 @@ populate db:
 
 destroy staging namespace:
   stage: destroy staging
-  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   allow_failure: true
   environment:
     name: staging
@@ -316,7 +309,7 @@ destroy staging namespace:
   script:
     - kubectl delete namespace staging
   only:
-    - staging
+    - main
   when: manual
   tags:
     - docker
@@ -338,7 +331,7 @@ destroy staging cluster:
     - gitlab-terraform destroy
   resource_group: staging
   only:
-    - staging
+    - main
   when: manual
   tags:
     - docker
