@@ -233,6 +233,7 @@ provide secrets:
     - gcloud config set compute/region ${GCP_PROJECT_REGION}
     - gcloud container clusters get-credentials ${ENVIRONMENT}-cluster
   script:
+    - kubectl create namespace ${ENVIRONMENT} --dry-run=client -o yaml | kubectl apply -f -
     - echo ${REGISTRY_CREDENTIALS} > .dockerconfigjson
     - >-
       kubectl create secret generic nhl-app-registry
@@ -272,6 +273,7 @@ deploy app:
       helm upgrade nhl-app-${ENVIRONMENT} nhl-app -i
       -n ${ENVIRONMENT}
       --set environment=${ENVIRONMENT}
+      --set domainName=${DOMAIN_NAME}
   only:
     - main
   tags:
