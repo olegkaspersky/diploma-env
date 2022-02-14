@@ -55,7 +55,7 @@ lint yaml files:
 
 lint helm chart:
   stage: check
-  image: registry.koi-projects.ru/epam-diploma/app-env/deployer
+  image: registry.koi-projects.ru/epam-diploma/env/deployer
   allow_failure: true
   script:
     - helm lint nhl-app
@@ -226,7 +226,7 @@ apply:
 
 provide secrets:
   stage: deploy
-  image: registry.koi-projects.ru/epam-diploma/app-env/deployer
+  image: registry.koi-projects.ru/epam-diploma/env/deployer
   environment:
     name: staging
   allow_failure: true
@@ -262,7 +262,7 @@ provide secrets:
 
 populate db:
   stage: db
-  image: registry.koi-projects.ru/epam-diploma/nhl-app:latest
+  image: registry.koi-projects.ru/epam-diploma/app:latest
   allow_failure: true
   variables:
     FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
@@ -279,7 +279,7 @@ populate db:
 
 deploy app:
   stage: deploy
-  image: registry.koi-projects.ru/epam-diploma/app-env/deployer
+  image: registry.koi-projects.ru/epam-diploma/env/deployer
   environment:
     name: staging
   allow_failure: true
@@ -304,7 +304,7 @@ deploy app:
 
 destroy staging namespace:
   stage: destroy staging
-  image: registry.koi-projects.ru/epam-diploma/app-env/deployer
+  image: registry.koi-projects.ru/epam-diploma/env/deployer
   allow_failure: true
   environment:
     name: staging
