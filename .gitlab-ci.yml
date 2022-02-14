@@ -11,7 +11,6 @@ variables:
   TF_ADDRESS: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${ENVIRONMENT}
   TF_STATE_NAME: ${ENVIRONMENT}
   TF_CACHE_KEY: ${ENVIRONMENT}
-  TF_VAR_gcp_project: ${GCP_PROJECT}
 
 
 stages:
@@ -120,6 +119,7 @@ init:
     paths:
       - ${TF_ROOT}/.terraform/
   script:
+    - export TF_VAR_gcp_project=${GCP_PROJECT}
     - cd ${TF_ROOT}/${ENVIRONMENT}
     - gitlab-terraform version
     - gitlab-terraform init
@@ -181,6 +181,7 @@ plan:
     paths:
       - ${TF_ROOT}/.terraform/
   script:
+    - export TF_VAR_gcp_project=${GCP_PROJECT}
     - cd ${TF_ROOT}/${ENVIRONMENT}
     - gitlab-terraform plan
     - gitlab-terraform plan-json
