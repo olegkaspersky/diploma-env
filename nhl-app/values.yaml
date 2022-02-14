@@ -1,0 +1,12 @@
+---
+environment: staging
+
+imageRepository: "registry.koi-projects.ru/epam-diploma"
+imageName: "nhl-app"
+
+appPort: 5000
+
+minReplicaCount: 6
+maxReplicaCount: 24
+
+domainName: "staging.koi-projects.ru"
