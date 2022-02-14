@@ -160,6 +160,7 @@ validate:
     paths:
       - ${TF_ROOT}/.terraform/
   script:
+    - export TF_VAR_gcp_project=${GCP_PROJECT}
     - cd ${TF_ROOT}/${ENVIRONMENT}
     - gitlab-terraform validate
   resource_group: ${TF_STATE_NAME}
