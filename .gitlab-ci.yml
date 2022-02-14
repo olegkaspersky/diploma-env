@@ -45,7 +45,7 @@ lint yaml files:
   script:
     - yamllint .gitlab-ci.yml nhl-app
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -57,7 +57,7 @@ lint helm chart:
   script:
     - helm lint nhl-app
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -73,7 +73,7 @@ checkov terraform:
   script:
     - checkov -d terraform -o cli
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -89,7 +89,7 @@ checkov chart:
   script:
     - checkov -d nhl-app -o cli
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -144,7 +144,7 @@ fmt:
     - gitlab-terraform fmt
   resource_group: ${TF_STATE_NAME}
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -165,7 +165,7 @@ validate:
     - gitlab-terraform validate
   resource_group: ${TF_STATE_NAME}
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
   tags:
     - docker
 
@@ -193,8 +193,7 @@ plan:
     reports:
       terraform: ${TF_ROOT}/${ENVIRONMENT}/plan.json
   only:
-    - staging
-    - production
+    - main
   tags:
     - docker
 
@@ -216,8 +215,7 @@ apply:
   dependencies:
     - plan
   only:
-    - staging
-    - production
+    - main
   when: manual
   tags:
     - docker
@@ -252,8 +250,7 @@ provide secrets:
       --dry-run=client -o yaml |
       kubectl apply -f -
   only:
-    - staging
-    - production
+    - main
   when: manual
   tags:
     - docker
@@ -278,8 +275,7 @@ deploy app:
       -n ${ENVIRONMENT}
       --set environment=${ENVIRONMENT}
   only:
-    - staging
-    - production
+    - main
   tags:
     - docker
 
@@ -294,8 +290,7 @@ populate db:
     - echo ${FIRESTORE_CREDENTIALS} > firestore-credentials.json
     - python createdb.py
   only:
-    - staging
-    - production
+    - main
   when: manual
   tags:
     - docker
@@ -316,7 +311,7 @@ destroy staging namespace:
   script:
     - kubectl delete namespace staging
   only:
-    - staging
+    - main
   when: manual
   tags:
     - docker
@@ -338,7 +333,7 @@ destroy staging cluster:
     - gitlab-terraform destroy
   resource_group: staging
   only:
-    - staging
+    - main
   when: manual
   tags:
     - docker
