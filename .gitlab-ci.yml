@@ -15,7 +15,6 @@ variables:
 
 stages:
   - check
-  - build deployer
   - prepare
   - validate
   - plan
@@ -52,7 +51,7 @@ lint yaml files:
 
 lint helm chart:
   stage: check
-  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   allow_failure: true
   script:
     - helm lint nhl-app
@@ -223,7 +222,7 @@ apply:
 
 provide secrets:
   stage: deploy
-  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   environment:
     name: staging
   allow_failure: true
@@ -258,7 +257,7 @@ provide secrets:
 
 deploy app:
   stage: deploy
-  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   environment:
     name: staging
   allow_failure: true
@@ -298,7 +297,7 @@ populate db:
 
 destroy staging namespace:
   stage: destroy staging
-  image: registry.koi-projects.ru/epam-diploma/env/deployer
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   allow_failure: true
   environment:
     name: staging
