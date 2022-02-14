@@ -249,7 +249,6 @@ provide secrets:
       kubectl apply -f -
   only:
     - main
-  when: manual
   tags:
     - docker
 

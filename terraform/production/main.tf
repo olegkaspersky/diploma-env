@@ -12,5 +12,6 @@ module "cluster" {
 module "database" {
   source = "../modules/database"
 
+  gcp_project       = "production-339118"
   database_location = "europe-west"
 }
