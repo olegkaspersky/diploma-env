@@ -1,9 +1,8 @@
 ---
 variables:
-  ENVIRONMENT: 'staging'
+  ENVIRONMENT: ${CI_COMMIT_BRANCH}
   GOOGLE_CREDENTIALS: ${GOOGLE_CREDENTIALS}
   FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
-  FIRESTORE_CREDENTIALS_MANIFEST: ${FIRESTORE_CREDENTIALS_MANIFEST}
   REGISTRY_CREDENTIALS: ${REGISTRY_CREDENTIALS}
   GCP_PROJECT: ${GCP_PROJECT}
   GCP_PROJECT_REGION: ${GCP_PROJECT_REGION}
@@ -21,7 +20,6 @@ stages:
   - prepare
   - validate
   - plan
-  - cost
   - apply
   - deploy
   - db
@@ -260,23 +258,6 @@ provide secrets:
     - docker
 
 
-populate db:
-  stage: db
-  image: registry.koi-projects.ru/epam-diploma/app:latest
-  allow_failure: true
-  variables:
-    FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
-  script:
-    - echo ${FIRESTORE_CREDENTIALS} > firestore-credentials.json
-    - python createdb.py
-  only:
-    - staging
-    - production
-  when: manual
-  tags:
-    - docker
-
-
 deploy app:
   stage: deploy
   image: registry.koi-projects.ru/epam-diploma/env/deployer
@@ -298,6 +279,23 @@ deploy app:
   only:
     - staging
     - production
+  tags:
+    - docker
+
+
+populate db:
+  stage: db
+  image: registry.koi-projects.ru/epam-diploma/app:latest
+  allow_failure: true
+  variables:
+    FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
+  script:
+    - echo ${FIRESTORE_CREDENTIALS} > firestore-credentials.json
+    - python createdb.py
+  only:
+    - staging
+    - production
+  when: manual
   tags:
     - docker
 
