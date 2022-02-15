@@ -280,7 +280,7 @@ deploy app:
     - docker
 
 
-populate db:
+update db:
   stage: db
   image: registry.koi-projects.ru/epam-diploma/app:latest
   environment:
@@ -289,8 +289,9 @@ populate db:
   variables:
     FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
   script:
+    - mkdir -p /usr/src/app/secret/
     - echo ${FIRESTORE_CREDENTIALS} > /usr/src/app/secret/firestore-credentials.json
-    - python app/createdb.py
+    - python /usr/src/app/createdb.py
   only:
     - main
   when: manual
