@@ -25,7 +25,7 @@ stages:
 
 lint yaml files:
   stage: check
-  image: python:3.9.10-slim-bullseye
+  image: python:3
   allow_failure: true
   variables:
     PIP_CACHE_DIR: ${CI_PROJECT_DIR}/.cache/pip
@@ -289,8 +289,8 @@ populate db:
   variables:
     FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
   script:
-    - echo ${FIRESTORE_CREDENTIALS} > firestore-credentials.json
-    - python createdb.py
+    - echo ${FIRESTORE_CREDENTIALS} > /usr/src/app/secret/firestore-credentials.json
+    - python app/createdb.py
   only:
     - main
   when: manual
