@@ -18,6 +18,7 @@ stages:
   - validate
   - plan
   - apply
+  - dependencies
   - deploy
   - db
   - destroy staging
@@ -88,19 +89,6 @@ checkov chart:
     - checkov -d nhl-app -o cli
   rules:
     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-  tags:
-    - docker
-
-
-gitleaks secrets scanning:
-  stage: check
-  image:
-    name: zricethezav/gitleaks
-    entrypoint:
-      - ""
-  allow_failure: false
-  script:
-    - gitleaks detect -v
   tags:
     - docker
 
@@ -220,12 +208,37 @@ apply:
     - docker
 
 
-provide secrets:
-  stage: deploy
-  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
+install nginx ingress controller:
+  stage: dependencies
+  image: registry.koi-projects.ru/epam-diploma/app-env/deployer
+  allow_failure: false
   environment:
     name: ${ENVIRONMENT}
+  variables:
+    GIT_STRATEGY: none
+  before_script:
+    - echo ${GOOGLE_CREDENTIALS} > credentials.json
+    - gcloud auth activate-service-account --key-file=credentials.json
+    - gcloud config set project ${GCP_PROJECT}
+    - gcloud config set compute/region ${GCP_PROJECT_REGION}
+    - gcloud container clusters get-credentials ${ENVIRONMENT}-cluster
+  script:
+    - kubectl create namespace ${ENVIRONMENT} --dry-run=client -o yaml | kubectl apply -f -
+    - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+    - helm repo update
+    - helm upgrade -i ingress-nginx ingress-nginx/ingress-nginx -n ${ENVIRONMENT} # ! SPECIFY NGINX INGRESS CONTROLLER VERSION
+  only:
+    - main
+  tags:
+    - docker
+
+
+provide secrets:
+  stage: dependencies
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
   allow_failure: true
+  environment:
+    name: ${ENVIRONMENT}
   before_script:
     - echo ${GOOGLE_CREDENTIALS} > credentials.json
     - gcloud auth activate-service-account --key-file=credentials.json
@@ -258,9 +271,9 @@ provide secrets:
 deploy app:
   stage: deploy
   image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
+  allow_failure: true
   environment:
     name: ${ENVIRONMENT}
-  allow_failure: true
   before_script:
     - echo ${GOOGLE_CREDENTIALS} > credentials.json
     - gcloud auth activate-service-account --key-file=credentials.json
@@ -283,9 +296,9 @@ deploy app:
 update db:
   stage: db
   image: registry.koi-projects.ru/epam-diploma/app:latest
+  allow_failure: true
   environment:
     name: ${ENVIRONMENT}
-  allow_failure: true
   variables:
     FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
   script:
