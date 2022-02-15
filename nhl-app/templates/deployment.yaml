@@ -39,11 +39,11 @@ spec:
 
           resources:
             requests:
-              cpu: 10m
+              cpu: 60m
               memory: 128Mi
             limits:
-              cpu: 100m
-              memory: 256Mi
+              cpu: 180m
+              memory: 228Mi
 
           securityContext:
             readOnlyRootFilesystem: true

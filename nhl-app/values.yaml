@@ -2,7 +2,7 @@
 environment: staging
 
 imageRepository: "registry.koi-projects.ru/epam-diploma"
-imageName: "nhl-app"
+imageName: "app"
 
 appPort: 5000
 
