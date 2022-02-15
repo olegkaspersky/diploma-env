@@ -6,11 +6,12 @@ resource "google_compute_network" "cluster_network" {
 
 
 resource "google_compute_subnetwork" "cluster_subnetwork" {
-  name                     = var.network_name
-  ip_cidr_range            = var.subnet_range
-  private_ip_google_access = true
-  region                   = var.project_region
-  network                  = google_compute_network.cluster_network.id
+  name                       = var.network_name
+  ip_cidr_range              = var.subnet_range
+  private_ip_google_access   = true
+  private_ipv6_google_access = true
+  region                     = var.project_region
+  network                    = google_compute_network.cluster_network.id
 
   log_config {
     aggregation_interval = "INTERVAL_5_MIN"

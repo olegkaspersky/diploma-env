@@ -136,7 +136,7 @@ variable "minimum_cluster_node_count" {
 
 variable "maximum_cluster_node_count" {
   default     = 3
-  description = ""
+  description = "Maximum number of nodes in zone."
   type        = number
   sensitive   = false
 }
@@ -151,7 +151,7 @@ variable "cluster_node_min_machine_cpu_cores" {
 
 
 variable "cluster_node_max_machine_cpu_cores" {
-  default     = 4
+  default     = 2
   description = ""
   type        = number
   sensitive   = false
@@ -167,7 +167,7 @@ variable "cluster_node_min_machine_ram" {
 
 
 variable "cluster_node_max_machine_ram" {
-  default     = 8
+  default     = 4
   description = ""
   type        = number
   sensitive   = false
@@ -175,7 +175,7 @@ variable "cluster_node_max_machine_ram" {
 
 
 variable "max_cluster_nodes_unavailable" {
-  default     = 1
+  default     = 0
   description = ""
   type        = number
   sensitive   = false
