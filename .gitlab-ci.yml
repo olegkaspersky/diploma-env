@@ -1,6 +1,6 @@
 ---
 variables:
-  ENVIRONMENT: 
+  ENVIRONMENT:
     value: staging
   GOOGLE_CREDENTIALS: ${GOOGLE_CREDENTIALS}
   FIRESTORE_CREDENTIALS: ${FIRESTORE_CREDENTIALS}
@@ -327,8 +327,6 @@ destroy staging namespace:
     - gcloud container clusters get-credentials staging-cluster
   script:
     - kubectl delete namespace staging
-  only:
-    - main
   when: manual
   tags:
     - docker
@@ -349,8 +347,6 @@ destroy staging cluster:
     - cd ${TF_ROOT}/${ENVIRONMENT}
     - gitlab-terraform destroy
   resource_group: staging
-  only:
-    - main
   when: manual
   tags:
     - docker
