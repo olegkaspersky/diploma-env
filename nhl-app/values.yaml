@@ -6,7 +6,7 @@ imageName: "app"
 
 appPort: 5000
 
-minReplicaCount: 6
-maxReplicaCount: 18
+minReplicaCount: 5
+maxReplicaCount: 15
 
 domainName: "placeholder.example.com"
