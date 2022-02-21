@@ -208,7 +208,7 @@ apply:
     - docker
 
 
-install nginx ingress controller:
+install ingress controller:
   stage: dependencies
   image: registry.koi-projects.ru/epam-diploma/app-env/deployer
   allow_failure: false
@@ -263,6 +263,28 @@ provide secrets:
       -n=${ENVIRONMENT}
       --dry-run=client -o yaml |
       kubectl apply -f -
+  only:
+    - main
+  tags:
+    - docker
+
+
+configure ingress controller:
+  stage: dependencies
+  image: registry.koi-projects.ru/epam-diploma/deployer:0.1.0
+  allow_failure: true
+  environment:
+    name: ${ENVIRONMENT}
+  before_script:
+    - echo ${GOOGLE_CREDENTIALS} > credentials.json
+    - gcloud auth activate-service-account --key-file=credentials.json
+    - gcloud config set project ${GCP_PROJECT}
+    - gcloud config set compute/region ${GCP_PROJECT_REGION}
+    - gcloud container clusters get-credentials ${ENVIRONMENT}-cluster
+  script:
+    - kubectl apply -f ingress-controller/configmap.yaml -n ${ENVIRONMENT}
+  needs:
+    - install ingress controller
   only:
     - main
   tags:

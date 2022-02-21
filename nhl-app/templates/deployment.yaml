@@ -31,7 +31,7 @@ spec:
     
     spec:
       containers:
-        - name: {{.Release.Name}}-pod
+        - name: {{.Release.Name}}-container
           image: {{.Values.imageRepository}}/{{.Values.imageName}}:{{.Chart.AppVersion}}
           imagePullPolicy: Always
 
