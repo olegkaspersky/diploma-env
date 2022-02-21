@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+
+data:
+  allow-snippet-annotations: 'true'
+  log-format-upstream: "request status: $request $status, http user agent: $http_user_agent, request time: $request_time, upstream response time: $upstream_response_time, upstream status: $upstream_status"
+  forwarded-for-header: 'X-Forwarded-For'
